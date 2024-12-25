@@ -1,10 +1,16 @@
 package org.example.kafka.cluster
 
+import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.slf4j.MDCContext
 import mu.KLogging
 import org.awaitility.kotlin.atMost
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
 import org.awaitility.kotlin.withPollInterval
+import org.testcontainers.containers.Container
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.Network
@@ -67,26 +73,25 @@ class KafkaContainerCluster(
         brokers.joinToString { kafkaContainer: KafkaContainer -> kafkaContainer.bootstrapServers }
 
     override fun start() {
-        brokers.forEach(KafkaContainer::start)
-        brokers.forEach { container ->
-            await withPollInterval Duration.ofMillis(500) atMost Duration.ofSeconds(30) untilAsserted {
-                container.isRunning
-            }
+        zookeeper?.start()
+        runBlocking {
+            brokers.forEach { async(Dispatchers.IO.plus(MDCContext())) { it.start() } }
         }
-//        await withPollInterval Duration.ofMillis(500) atMost Duration.ofSeconds(30) untilAsserted {
-//            val execResult: Container.ExecResult? = zookeeper?.execInContainer(
-//                "sh",
-//                "-c",
-//                "zookeeper-shell zookeeper:" + KafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
-//            )
-//            val brokers = execResult?.stdout
-//            logger.info { "brokers is: $brokers" }
-//            brokers?.split(",")?.size shouldBe brokersNum
-//        }
+
+        await withPollInterval Duration.ofMillis(500) atMost Duration.ofSeconds(30) untilAsserted {
+            val execResult: Container.ExecResult? = zookeeper?.execInContainer(
+                "sh",
+                "-c",
+                "zookeeper-shell zookeeper:" + KafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+            )
+            val brokers = execResult?.stdout
+            logger.info { "brokers is: $brokers" }
+            brokers?.split(",")?.size shouldBe brokersCount
+        }
     }
 
     override fun stop() {
-        brokers.forEach(KafkaContainer::stop)
         zookeeper?.stop()
+        runBlocking { brokers.forEach { async(Dispatchers.IO.plus(MDCContext())) { it.stop() } } }
     }
 }

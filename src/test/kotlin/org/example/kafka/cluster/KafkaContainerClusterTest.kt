@@ -23,6 +23,18 @@ class KafkaContainerClusterTest {
     }
 
     @Test
+    fun `should run 3 kafka instance in cluster`() {
+        executeInCluster { cluster -> cluster.brokers().size shouldBe 3 }
+    }
+
+    private fun executeInCluster(block: (KafkaContainerCluster) -> Unit) {
+        KafkaContainerCluster("6.2.1", 3, 3).use {
+            it.start()
+            block(it)
+        }
+    }
+
+    @Test
     fun test() {
         KafkaContainerCluster("6.2.1", 3, 2).use { cluster ->
             cluster.start()
