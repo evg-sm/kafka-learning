@@ -30,14 +30,25 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+
     // https://mvnrepository.com/artifact/org.testcontainers/testcontainers-bom
     testImplementation(platform("org.testcontainers:testcontainers-bom:1.20.4"))
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:kafka")
+    // https://mvnrepository.com/artifact/io.debezium/debezium-testing-testcontainers
+    testImplementation("io.debezium:debezium-testing-testcontainers:3.0.5.Final")
+
+    // https://mvnrepository.com/artifact/commons-dbutils/commons-dbutils
+    implementation("commons-dbutils:commons-dbutils:1.8.1")
+
+    // https://mvnrepository.com/artifact/org.postgresql/postgresql
+    implementation("org.postgresql:postgresql:42.7.4")
+
 
     testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
 
+    // kotest
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-framework-datatest:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-json-jvm:$kotestVersion")

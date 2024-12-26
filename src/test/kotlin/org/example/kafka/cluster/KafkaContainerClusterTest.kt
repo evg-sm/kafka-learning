@@ -3,19 +3,12 @@ package org.example.kafka.cluster
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import mu.KLogging
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Test
 import java.time.Duration
-import java.util.*
 
 class KafkaContainerClusterTest {
 
@@ -28,29 +21,24 @@ class KafkaContainerClusterTest {
         executeInCluster { cluster -> cluster.brokers().size shouldBe 3 }
     }
 
-    private fun executeInCluster(block: (KafkaContainerCluster) -> Unit) {
-        KafkaContainerCluster("6.2.1", 3, 3).use {
-            it.start()
-            block(it)
-        }
-    }
-
     @Test
-    fun test() {
-        KafkaContainerCluster("6.2.1", 3, 2).use { cluster ->
-            cluster.start()
-
+    fun `should read single message from topic`() {
+        executeInCluster { cluster ->
             cluster.consumer()?.subscribe(listOf(TOPIC_NAME))
 
             val message = ProducerRecord(TOPIC_NAME, "1", "val")
 
-            cluster.producer()?.send(message) { _: RecordMetadata?, e: Exception? ->
-                if (e != null) {
-                    logger.error(e) { e.printStackTrace() }
-                } else {
-                    logger.info { "Message sent: " + message.key() }
-                }
-            }
+            // async with Callback
+//            cluster.producer()?.send(message) { _: RecordMetadata?, e: Exception? ->
+//                if (e != null) {
+//                    logger.error(e) { e.printStackTrace() }
+//                } else {
+//                    logger.info { "Message sent: " + message.key() }
+//                }
+//            }
+
+            // sync
+            cluster.producer()?.send(message)?.get()
 
             val record: ConsumerRecords<String, String>? = cluster.consumer()?.poll(Duration.ofSeconds(5))
             val records: MutableIterable<ConsumerRecord<String, String>>? = record?.records(TOPIC_NAME)
@@ -61,6 +49,13 @@ class KafkaContainerClusterTest {
             records?.first()?.value() shouldBe "val"
 
             cluster.consumer()?.unsubscribe()
+        }
+    }
+
+    private fun executeInCluster(block: (KafkaContainerCluster) -> Unit) {
+        KafkaContainerCluster("6.2.1", 3, 3).use {
+            it.start()
+            block(it)
         }
     }
 }
